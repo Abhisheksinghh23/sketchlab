@@ -324,11 +324,12 @@ export function useSketchLab(): SketchLab {
     setExperiments((prev) => [...prev, copy]);
     setActiveId(copy.id);
     setMode('edit');
-    setSelected(null);
+    // object ids survive cloning, so the selection carries into the fork
+    setSelected(selectedId);
     setFrameTick(-1);
     setCompareId(source.id);
     setSceneVersion((v) => v + 1);
-  }, [experiments, activeId]);
+  }, [experiments, activeId, selectedId]);
 
   const newExperiment = useCallback(() => {
     const exp = freshExperiment(`Experiment ${experimentCounter++}`, {

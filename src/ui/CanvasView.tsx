@@ -435,7 +435,12 @@ function drawObject(
     ctx.lineWidth = 2;
     ctx.setLineDash([6, 4]);
     const b = boundsOf(obj);
-    ctx.strokeRect(b.x - 6, b.y - 6, b.w + 12, b.h + 12);
+    // follow the live body during playback, not the edit-time pose
+    const refX = obj.kind === 'pendulum' ? obj.bobX : 'x' in obj ? obj.x : null;
+    const refY = obj.kind === 'pendulum' ? obj.bobY : 'y' in obj ? obj.y : null;
+    const dx = bf && refX !== null ? bf.x - refX : 0;
+    const dy = bf && refY !== null ? bf.y - refY : 0;
+    ctx.strokeRect(b.x + dx - 6, b.y + dy - 6, b.w + 12, b.h + 12);
     ctx.restore();
   }
 }

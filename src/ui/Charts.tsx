@@ -78,10 +78,12 @@ export function Charts({ lab }: { lab: SketchLab }) {
     let a = seriesFor(recA, metric, lab.selectedId);
     let b = seriesFor(recB, metric, lab.selectedId);
     let noteB: string | null = null;
-    if (recB && mostlyNaN(b)) {
-      // The selected object does not exist in the comparison experiment: show its system total.
-      b = seriesFor(recB, metric === 'speed' || metric === 'height' ? 'energy' : metric, null);
-      noteB = 'no matching object in comparison: showing its system total';
+    if (recB && lab.selectedId && mostlyNaN(b)) {
+      // The selected object does not exist in the comparison experiment: compare system totals
+      // on both sides so the two series share a unit.
+      b = seriesFor(recB, 'energy', null);
+      a = seriesFor(recA, 'energy', null);
+      noteB = 'no matching object in comparison: comparing system totals';
     }
     if (mostlyNaN(a)) a = [];
 
@@ -184,7 +186,11 @@ export function Charts({ lab }: { lab: SketchLab }) {
     ctx.fillText(lab.active.name, padL + 6, padT + plotH + 14);
     if (compareExp) {
       ctx.fillStyle = COLOR_B;
-      ctx.fillText(compareExp.name + (noteB ? ' (system total)' : ''), padL + 170, padT + plotH + 14);
+      ctx.fillText(compareExp.name, padL + 170, padT + plotH + 14);
+      if (noteB) {
+        ctx.fillStyle = 'rgba(230,237,247,0.5)';
+        ctx.fillText(noteB, padL + 6, padT + 12);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [size, lab.frameTick, lab.selectedId, lab.compareId, lab.activeId, metric, lab.sceneVersion, lab.mode]);
