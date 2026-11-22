@@ -81,3 +81,65 @@ describe('hit testing', () => {
     expect(hitTest(scene, { x: 20, y: 20 })).toBeNull();
   });
 });
+
+describe('persistence', () => {
+  function fakeStorage(behavior?: { throwOnSet?: boolean }) {
+    const store = new Map<string, string>();
+    const storage = {
+      getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
+      setItem: (k: string, v: string) => {
+        if (behavior?.throwOnSet) throw new Error('QuotaExceededError');
+        store.set(k, v);
+      },
+      removeItem: (k: string) => {
+        store.delete(k);
+      },
+    };
+    (globalThis as { localStorage?: unknown }).localStorage = storage;
+    return store;
+  }
+
+  it('round-trips a valid saved state', async () => {
+    const { loadState, saveState } = await import('./persistence');
+    const store = fakeStorage();
+    const state = {
+      version: 1 as const,
+      experiments: [{ id: 'a', name: 'A', scene: sampleScene(), world: { gravityScale: 1 } }],
+      activeId: 'a',
+    };
+    expect(saveState(state)).toBe(true);
+    const loaded = loadState();
+    expect(loaded.kind).toBe('ok');
+    if (loaded.kind === 'ok') expect(loaded.state.activeId).toBe('a');
+    expect(store.has('sketchlab-v1')).toBe(true);
+  });
+
+  it('reports empty when nothing is stored', async () => {
+    const { loadState } = await import('./persistence');
+    fakeStorage();
+    expect(loadState().kind).toBe('empty');
+  });
+
+  it('flags malformed JSON as corrupt without touching it', async () => {
+    const { loadState } = await import('./persistence');
+    const store = fakeStorage();
+    store.set('sketchlab-v1', '{not json');
+    expect(loadState().kind).toBe('corrupt');
+    expect(store.get('sketchlab-v1')).toBe('{not json');
+  });
+
+  it('flags a wrong-shaped save as corrupt', async () => {
+    const { loadState } = await import('./persistence');
+    const store = fakeStorage();
+    store.set('sketchlab-v1', JSON.stringify({ version: 99, experiments: [] }));
+    expect(loadState().kind).toBe('corrupt');
+  });
+
+  it('reports save failure when storage throws', async () => {
+    const { saveState } = await import('./persistence');
+    fakeStorage({ throwOnSet: true });
+    expect(
+      saveState({ version: 1, experiments: [], activeId: 'x' }),
+    ).toBe(false);
+  });
+});
