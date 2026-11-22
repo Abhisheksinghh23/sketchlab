@@ -64,6 +64,8 @@ await page.waitForTimeout(2200);
 await page.getByTestId('pause-btn').click();
 await page.getByTestId('metric-speed').click();
 await page.waitForTimeout(300);
+const forkInsp = await page.getByTestId('inspector').innerText();
+ok('live: selection carried into fork', /friction/i.test(forkInsp));
 const compareVal = await page.getByTestId('compare-select').inputValue();
 ok('live: fork auto-compares to original', compareVal !== '');
 await page.screenshot({ path: SHOTS + 'live-3-fork-compare-selected.png' });
