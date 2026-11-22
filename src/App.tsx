@@ -46,6 +46,20 @@ export default function App() {
             {lab.recordingCapped && (
               <span className="warn">Recording stopped at 60 s. Reset to run again.</span>
             )}
+            {lab.persistenceIssue === 'saving-failed' && (
+              <span className="warn" data-testid="save-failed-warn">
+                Browser storage is unavailable or full: edits in this session are NOT being saved.
+              </span>
+            )}
+            {lab.persistenceIssue === 'corrupt' && (
+              <span className="warn" data-testid="corrupt-warn">
+                Saved data from a previous visit could not be read, so the app started fresh. The
+                old data was left untouched and new changes are not being saved.{' '}
+                <button className="warn-action" onClick={lab.discardCorruptSave}>
+                  Discard old save and resume saving
+                </button>
+              </span>
+            )}
             <span>
               Space: play/pause. Ctrl+Z / Ctrl+Y: undo/redo. Draw in Edit mode, press Play, scrub
               the timeline, Fork to compare two versions.
