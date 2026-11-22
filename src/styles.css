@@ -20,6 +20,7 @@ body,
 #root {
   margin: 0;
   height: 100%;
+  overflow-x: clip;
   background: var(--bg);
   color: var(--text);
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -313,11 +314,14 @@ button.danger {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  row-gap: 2px;
   padding: 4px 10px;
 }
 
 .metric-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
 }
 
@@ -330,6 +334,33 @@ button.danger {
 .metric-tab.active {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+/* ---------- phones: stack toolbar / canvas / inspector vertically ---------- */
+@media (max-width: 640px) {
+  .app-body {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .toolbar {
+    width: 100%;
+    flex-direction: row;
+    overflow-x: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 6px;
+  }
+  .tool-btn {
+    flex: 0 0 auto;
+  }
+  .center-col {
+    min-height: 78vh;
+  }
+  .inspector {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
 }
 
 /* ---------- small screens ---------- */

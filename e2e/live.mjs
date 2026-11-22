@@ -138,7 +138,11 @@ await mob.getByTestId('pause-btn').tap();
 await mob.screenshot({ path: SHOTS + 'live-7-mobile-drawn-run.png' });
 
 // scroll down to the charts
-await mob.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+await mob.evaluate(() => {
+  const scroller = document.querySelector('.app-body') || document.scrollingElement;
+  scroller.scrollTo(0, scroller.scrollHeight);
+  window.scrollTo(0, document.body.scrollHeight);
+});
 await mob.waitForTimeout(400);
 ok('mobile: charts reachable by scroll', await mob.locator('[data-testid=charts] canvas').isVisible());
 await mob.screenshot({ path: SHOTS + 'live-8-mobile-scrolled.png' });
