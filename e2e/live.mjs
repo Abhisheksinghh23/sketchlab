@@ -95,6 +95,42 @@ ok('live: no page errors', errors.length === 0);
 if (errors.length) console.log('errors:', errors.slice(0, 3));
 await page.close();
 
+// corrupt saved data: warn, protect raw bytes, acknowledge to resume saving
+const c = await browser.newPage({ viewport: { width: 1280, height: 860 } });
+await c.addInitScript(() => {
+  try {
+    localStorage.setItem('sketchlab-v1', '{not json');
+  } catch {}
+});
+await c.goto(BASE, { waitUntil: 'networkidle' });
+await c.waitForSelector('[data-testid=world-canvas]');
+ok('corrupt: warning visible', await c.getByTestId('corrupt-warn').isVisible());
+ok('corrupt: sample scene still boots', await c.getByTestId('play-btn').isVisible());
+const rawBefore = await c.evaluate(() => localStorage.getItem('sketchlab-v1'));
+ok('corrupt: old save bytes untouched', rawBefore === '{not json');
+await c.screenshot({ path: SHOTS + 'live-9-corrupt-warning.png' });
+await c.getByRole('button', { name: /Discard old save/ }).click();
+await c.waitForTimeout(400);
+ok('corrupt: warning cleared after discard', (await c.getByTestId('corrupt-warn').count()) === 0);
+const rawAfter = await c.evaluate(() => localStorage.getItem('sketchlab-v1'));
+ok('corrupt: saving resumed after discard', !!rawAfter && rawAfter.startsWith('{'));
+await c.close();
+
+// storage write failure: visible session-only warning
+const f = await browser.newPage({ viewport: { width: 1280, height: 860 } });
+await f.addInitScript(() => {
+  Storage.prototype.setItem = () => {
+    throw new Error('QuotaExceededError');
+  };
+});
+await f.goto(BASE, { waitUntil: 'networkidle' });
+await f.waitForSelector('[data-testid=world-canvas]');
+await f.waitForTimeout(400);
+ok('save-fail: warning visible', await f.getByTestId('save-failed-warn').isVisible());
+ok('save-fail: app still usable', await f.getByTestId('play-btn').isVisible());
+await f.screenshot({ path: SHOTS + 'live-10-save-failed-warning.png' });
+await f.close();
+
 // ---------------- mobile ----------------
 const mob = await browser.newPage({
   viewport: { width: 390, height: 844 },
