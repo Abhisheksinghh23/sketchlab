@@ -8,7 +8,7 @@ import {
   undoHistory,
 } from '../model/history';
 import type { History } from '../model/history';
-import { loadState, saveState } from '../model/persistence';
+import { clearState, loadState, saveState } from '../model/persistence';
 import { emptyScene, sampleScene } from '../model/samples';
 import { DEFAULT_WORLD, cloneScene, newId } from '../model/types';
 import type { Scene, SceneObject, WorldParams } from '../model/types';
@@ -18,6 +18,8 @@ import { TICKS_PER_SECOND } from '../physics/units';
 
 export type Tool = 'select' | 'ball' | 'box' | 'ramp' | 'pendulum' | 'pin' | 'erase';
 export type Mode = 'edit' | 'playing' | 'paused';
+/** 'corrupt': saved data exists but is unreadable; 'saving-failed': writes are being lost. */
+export type PersistenceIssue = 'corrupt' | 'saving-failed' | null;
 
 export interface SceneWorld {
   scene: Scene;
@@ -38,25 +40,33 @@ function freshExperiment(name: string, sceneWorld: SceneWorld): Experiment {
   return { id: newId('exp'), name, history: createHistory(sceneWorld) };
 }
 
-function initialExperiments(): { experiments: Experiment[]; activeId: string } {
+function initialExperiments(): {
+  experiments: Experiment[];
+  activeId: string;
+  issue: PersistenceIssue;
+} {
   const saved = loadState();
-  if (saved) {
-    const experiments = saved.experiments.map((e) => ({
+  if (saved.kind === 'ok') {
+    const experiments = saved.state.experiments.map((e) => ({
       id: e.id,
       name: e.name,
       history: createHistory<SceneWorld>({ scene: e.scene, world: e.world }),
     }));
-    const activeId = experiments.some((e) => e.id === saved.activeId)
-      ? saved.activeId
+    const activeId = experiments.some((e) => e.id === saved.state.activeId)
+      ? saved.state.activeId
       : experiments[0].id;
     experimentCounter = experiments.length + 1;
-    return { experiments, activeId };
+    return { experiments, activeId, issue: null };
   }
   const first = freshExperiment('Ramp + pendulum', {
     scene: sampleScene(),
     world: { ...DEFAULT_WORLD },
   });
-  return { experiments: [first], activeId: first.id };
+  return {
+    experiments: [first],
+    activeId: first.id,
+    issue: saved.kind === 'corrupt' ? 'corrupt' : null,
+  };
 }
 
 export interface SketchLab {
@@ -74,6 +84,10 @@ export interface SketchLab {
   canUndo: boolean;
   canRedo: boolean;
   recordingCapped: boolean;
+  /** Non-null while a persistence problem needs the user's attention. */
+  persistenceIssue: PersistenceIssue;
+  /** Discard an unreadable old save (user-confirmed) and resume saving. */
+  discardCorruptSave: () => void;
 
   getFrame: () => Frame | null;
   getRecording: (expId: string) => Frame[] | null;
@@ -406,9 +420,18 @@ export function useSketchLab(): SketchLab {
     return () => cancelAnimationFrame(raf);
   }, [mode, activeId, active, getSim]);
 
-  // Persist scenes (not recordings) locally.
+  const [persistenceIssue, setPersistenceIssue] = useState<PersistenceIssue>(init.issue);
+
+  const discardCorruptSave = useCallback(() => {
+    clearState();
+    setPersistenceIssue(null);
+  }, []);
+
+  // Persist scenes (not recordings) locally. Saving is paused while a corrupt
+  // save is unacknowledged, and a failed write surfaces as a visible warning.
   useEffect(() => {
-    saveState({
+    if (persistenceIssue === 'corrupt') return;
+    const ok = saveState({
       version: 1,
       experiments: experiments.map((e) => ({
         id: e.id,
@@ -418,7 +441,11 @@ export function useSketchLab(): SketchLab {
       })),
       activeId,
     });
-  }, [experiments, activeId]);
+    setPersistenceIssue((prev) => {
+      if (!ok) return 'saving-failed';
+      return prev === 'saving-failed' ? null : prev;
+    });
+  }, [experiments, activeId, persistenceIssue]);
 
   const recordingLength = recordingsRef.current.get(activeId)?.length ?? 0;
 
@@ -437,6 +464,8 @@ export function useSketchLab(): SketchLab {
       canUndo: canUndo(active.history),
       canRedo: canRedo(active.history),
       recordingCapped,
+      persistenceIssue,
+      discardCorruptSave,
       getFrame,
       getRecording,
       setTool,
@@ -471,6 +500,8 @@ export function useSketchLab(): SketchLab {
       recordingLength,
       sceneVersion,
       recordingCapped,
+      persistenceIssue,
+      discardCorruptSave,
       getFrame,
       getRecording,
       addObject,
@@ -495,4 +526,4 @@ export function useSketchLab(): SketchLab {
 
 function cloneSceneWorld(sw: SceneWorld): SceneWorld {
   return { scene: cloneScene(sw.scene), world: { ...sw.world } };
-}
+      }
