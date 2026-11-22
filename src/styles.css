@@ -336,33 +336,6 @@ button.danger {
   color: var(--accent);
 }
 
-/* ---------- phones: stack toolbar / canvas / inspector vertically ---------- */
-@media (max-width: 640px) {
-  .app-body {
-    flex-direction: column;
-    overflow-y: auto;
-  }
-  .toolbar {
-    width: 100%;
-    flex-direction: row;
-    overflow-x: auto;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-    padding: 6px;
-  }
-  .tool-btn {
-    flex: 0 0 auto;
-  }
-  .center-col {
-    min-height: 78vh;
-  }
-  .inspector {
-    width: 100%;
-    border-left: none;
-    border-top: 1px solid var(--border);
-  }
-}
-
 /* ---------- small screens ---------- */
 
 @media (max-width: 900px) {
@@ -382,5 +355,51 @@ button.danger {
   }
   .tool-label {
     display: none;
+  }
+}
+
+/* ---------- phones: stack toolbar / canvas / inspector vertically ---------- */
+@media (max-width: 640px) {
+  html,
+  body,
+  #root {
+    height: auto;
+  }
+  .app-shell {
+    height: auto;
+    min-height: 100vh;
+  }
+  .app-body {
+    display: block;
+  }
+  .toolbar {
+    width: 100%;
+    flex: 0 0 auto;
+    flex-direction: row;
+    overflow-x: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 6px;
+  }
+  .tool-btn {
+    flex: 0 0 auto;
+  }
+  .center-col {
+    flex: 0 0 auto;
+    min-height: 0;
+  }
+  .canvas-wrap {
+    flex: none;
+    /* no letterbox bands on phones: canvas matches the world aspect */
+    aspect-ratio: 1000 / 600;
+  }
+  .charts {
+    flex: 0 0 auto;
+  }
+  .inspector {
+    width: 100%;
+    overflow: visible;
+    border-left: none;
+    border-top: 1px solid var(--border);
   }
 }
